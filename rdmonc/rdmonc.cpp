@@ -13,6 +13,8 @@
 
 #include <czmq.h>
 
+#include <WtsApi32.h>
+
 constexpr wchar_t kReconnectEventName[]  = L"ig_rdmon-Reconnect";
 constexpr wchar_t kDisconnectEventName[] = L"ig_rdmon-Disconnect";
 
@@ -34,6 +36,8 @@ int main(void)
 
 	std::string data = os.str();
 
+	char user[64] = "";
+
 	int request_nbr;
 	for (request_nbr = 0; request_nbr != 10; request_nbr++)
 	{
@@ -44,15 +48,21 @@ int main(void)
 			DebugBreak();
 			exit(1);
 		}
+		LPWSTR result = nullptr;
+		DWORD result_size = 0;
+		WTSQuerySessionInformation(WTS_CURRENT_SERVER_HANDLE, WTS_CURRENT_SESSION, WTSClientName, &result, &result_size);
+		
+		wcstombs_s(nullptr, user, result, _TRUNCATE);
+
 		int i = (int)(ret - WAIT_OBJECT_0);
-		const char* msg;
+		char msg[128] = "";
 		if (handles[i] == reconnect_event)
 		{
-			msg = "RD Connected";
+			sprintf_s(msg, "RD Connected:    %s", user);
 		}
 		else
 		{
-			msg = "RD Disconnected";
+			sprintf_s(msg, "RD Disconnected: %s", user);
 		}
 		printf("Sending data: '%s'\n", msg);
 		zstr_send(requester, msg);
